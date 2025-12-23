@@ -1,27 +1,116 @@
-const express = require('express');
-const path = require('path');
-const app = express();
+export default function handler(req, res) {
+  const { method, url, body } = req;
+  
+  // Serve static files
+  if (url.startsWith('/_next') || url.startsWith('/static') || url === '/favicon.ico') {
+    return res.status(404).end();
+  }
+  
+  // Serve index.html for all GET requests
+  if (method === 'GET') {
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Safe Explorer - Pick Your Level</title>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 20px; background: #1a1a2e; color: white; }
+    .level-card { display: inline-block; width: 300px; margin: 20px; padding: 20px; background: #16213e; border-radius: 10px; cursor: pointer; transition: transform 0.3s; }
+    .level-card:hover { transform: scale(1.05); }
+    .level-1 { border: 3px solid #4CAF50; }
+    .level-2 { border: 3px solid #FF9800; }
+    .level-3 { border: 3px solid #f44336; }
+    #session-area { display: none; margin-top: 30px; }
+    #proxy-frame { width: 95%; height: 70vh; border: none; border-radius: 10px; }
+    .countdown { font-size: 3em; margin: 20px 0; }
+    .about { background: #0f3460; padding: 20px; margin: 20px auto; max-width: 800px; border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <h1>🔍 Safe Internet Explorer</h1>
+  
+  <div class="about">
+    <h2>📖 About</h2>
+    <p><strong>Level 1 (Green):</strong> Normal web like Google/YouTube. 100% safe.</p>
+    <p><strong>Level 2 (Orange):</strong> Deep web = academic papers, research databases. Educational only.</p>
+    <p><strong>Level 3 (Red):</strong> Dark web preview = .onion news sites. Strict safety mode.</p>
+    <p>All sessions <strong>auto-delete after 30min</strong>. No tracking!</p>
+  </div>
 
-app.use(express.static('public'));
-app.use(express.json());
+  <h2>Choose Your Level (30min Session)</h2>
+  
+  <div class="level-card level-1" onclick="startSession(1)">
+    <h3>🌐 Level 1: Surface Web</h3>
+    <p>Google, Wikipedia, safe sites</p>
+    <strong>👶 Beginner Friendly</strong>
+  </div>
 
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 min
-const activeSessions = new Map();
+  <div class="level-card level-2" onclick="startSession(2)">
+    <h3>🔍 Level 2: Deep Web</h3>
+    <p>Academic papers, research DBs</p>
+    <strong>📚 Educational</strong>
+  </div>
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+  <div class="level-card level-3" onclick="startSession(3)">
+    <h3>🕵️ Level 3: Dark Web Preview</h3>
+    <p>Safe .onion news + Tor links</p>
+    <strong>⚠️ Advanced - Strict Safety</strong>
+  </div>
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+  <div id="session-area">
+    <div id="status"></div>
+    <div id="countdown" class="countdown"></div>
+    <iframe id="proxy-frame"></iframe>
+  </div>
 
-app.post('/api/start-session', (req, res) => {
-  const { level } = req.body || {};
-  const sessionId = Date.now().toString();
-  setTimeout(() => activeSessions.delete(sessionId), SESSION_TIMEOUT);
-  activeSessions.set(sessionId, { level });
-  res.json({ sessionId, timeLeft: SESSION_TIMEOUT });
-});
-
-module.exports = app;
+  <script>
+    let timeLeft, currentLevel;
+    
+    async function startSession(level) {
+      currentLevel = level;
+      document.querySelectorAll('.level-card').forEach(c => c.style.display = 'none');
+      document.getElementById('session-area').style.display = 'block';
+      loadLevelContent();
+      startTimer();
+    }
+    
+    function loadLevelContent() {
+      const status = document.getElementById('status');
+      const frame = document.getElementById('proxy-frame');
+      
+      if (currentLevel === 1) {
+        status.innerHTML = '🌐 Level 1 Active - Surface Web';
+        frame.src = 'https://www.duckduckgo.com/?q=internet+safety';
+      } else if (currentLevel === 2) {
+        status.innerHTML = '🔍 Level 2 Active - Deep Web';
+        frame.src = 'https://www.jstor.org/search?Query=deep+web';
+      } else {
+        status.innerHTML = '🕵️ Level 3 Active - Dark Web Preview';
+        frame.src = 'https://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion/';
+      }
+    }
+    
+    function startTimer() {
+      let timeLeft = 30 * 60 * 1000; // 30 minutes
+      const timer = document.getElementById('countdown');
+      
+      const interval = setInterval(() => {
+        const mins = Math.floor(timeLeft / 60000);
+        const secs = ((timeLeft % 60000) / 1000).toFixed(0);
+        timer.textContent = \`\${mins}:\${secs.padStart(2, '0')}\`;
+        
+        if (timeLeft <= 0) {
+          clearInterval(interval);
+          location.reload();
+        }
+        timeLeft -= 1000;
+      }, 1000);
+    }
+  </script>
+</body>
+</html>`;
+    res.status(200).send(html);
+  }
+  
+  res.status(404).end();
+}
